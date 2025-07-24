@@ -7,3 +7,4 @@ def render_graph(graph_data):
     lines.append("}")
     return "\n".join(lines)
 
+
