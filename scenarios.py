@@ -10,3 +10,4 @@ def sample_network():
     ]
     return {"nodes": nodes, "edges": edges}
 
+
