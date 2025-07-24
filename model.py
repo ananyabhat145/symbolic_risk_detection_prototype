@@ -3,31 +3,35 @@ from z3 import *
 def build_risk_model(graph_data, node_config):
     report = []
     solver = Solver()
-    nodes = graph_data['nodes']
-    edges = graph_data['edges']
+
+    # Extract node and edge information
+    nodes = graph_data.get('nodes', [])
+    edges = graph_data.get('edges', [])
 
     z3_vars = {}
 
-    # Declare Z3 variables and add constraints
+    # Declare Z3 variables and add base + user-defined constraints
     for node in nodes:
         name = node['id']
         config = node_config.get(name, {})
 
-        c = Real(f"cap_{name}")
-        a = Real(f"assets_{name}")
-        l = Real(f"liq_{name}")
-        s = Real(f"short_{name}")
+        # Define Z3 Real variables for each financial metric
+        c = Real(f"cap_{name}")         # Capital
+        a = Real(f"assets_{name}")      # Total Assets
+        l = Real(f"liq_{name}")         # Liquid Assets
+        s = Real(f"short_{name}")       # Short-Term Obligations
 
-        # Use actual user-provided values as constants
+        # Add value assignments (user-provided or default)
         solver.add(c == config.get('capital', 10.0))
         solver.add(a == config.get('assets', 50.0))
         solver.add(l == config.get('liquidity', 5.0))
         solver.add(s == config.get('short_term', 20.0))
 
-        # Regulatory constraints
-        solver.add(c >= 0.08 * a)         # Basel-style capital adequacy
-        solver.add(l >= 0.25 * s)         # Liquidity Coverage Ratio
+        # Add regulatory constraints
+        solver.add(c >= 0.08 * a)        # Capital Adequacy Ratio (Basel III)
+        solver.add(l >= 0.25 * s)        # Liquidity Coverage Ratio
 
+        # Store Z3 variables for later reference
         z3_vars[name] = {
             'capital': c,
             'assets': a,
@@ -35,19 +39,26 @@ def build_risk_model(graph_data, node_config):
             'short_term': s
         }
 
-    # Handle interbank exposures
-    print("[DEBUG] Edges format:", edges)
-    print("[DEBUG] First edge type:", type(edges[0]))
+    # Debugging: print edge structure
+    if edges:
+        print("[DEBUG] Edges format:", edges)
+        print("[DEBUG] First edge type:", type(edges[0]))
 
+    # Interbank exposures
     for edge in edges:
-        src = edge['source']
-        tgt = edge['target']
-        weight = edge.get('weight', 1.0)
+        try:
+            src = edge['source']
+            tgt = edge['target']
+            weight = float(edge.get('weight', 1.0))
 
-        # Exposure: If source defaults, it imposes capital stress on target
-        solver.add(z3_vars[tgt]['capital'] >= 0.08 * z3_vars[tgt]['assets'] - weight)
+            # Apply shock propagation logic
+            solver.add(z3_vars[tgt]['capital'] >= 0.08 * z3_vars[tgt]['assets'] - weight)
 
-    # Solve
+        except Exception as e:
+            print(f"[ERROR] Invalid edge format: {edge} -> {e}")
+            continue
+
+    # Solve constraints
     result = solver.check()
     if result == sat:
         report.append("✅ System is stable under current constraints.")
@@ -61,3 +72,4 @@ def build_risk_model(graph_data, node_config):
         report.append("💥 Cascade simulation: one or more institutions may fail due to insufficient buffers.")
 
     return report
+
