@@ -9,48 +9,39 @@ st.set_page_config(page_title="Symbolic Systemic Risk Analyzer", layout="wide")
 if "theme" not in st.session_state:
     st.session_state.theme = "light"
 
-selected_theme = st.sidebar.radio("🎨 Theme", ["light", "dark"], index=0 if st.session_state.theme == "light" else 1)
-st.session_state.theme = selected_theme
-
-# Dynamic theme CSS
-if selected_theme == "dark":
-    background = "#1e272e"
-    text = "#ecf0f1"
-    primary = "#00a8ff"
-    secondary = "#2f3640"
+st.sidebar.toggle("🌗 Toggle Dark Mode", value=(st.session_state.theme == "dark"), key="theme_toggle")
+if st.session_state.theme_toggle:
+    st.session_state.theme = "dark"
+    primary_color = "#ecf0f1"
+    background_color = "#2c3e50"
+    font_color = "#ecf0f1"
 else:
-    background = "#f9f9fc"
-    text = "#2c3e50"
-    primary = "#40739e"
-    secondary = "#ecf0f1"
+    st.session_state.theme = "light"
+    primary_color = "#2c3e50"
+    background_color = "#f9f9fc"
+    font_color = "#2c3e50"
 
 st.markdown(f"""
     <style>
         html, body, [class*="css"]  {{
             font-family: 'Segoe UI', sans-serif;
-            background-color: {background};
-            color: {text};
+            background-color: {background_color};
+            color: {font_color};
         }}
         .reportview-container .main .block-container{{
-            padding: 2rem;
+            padding: 2rem 2rem 2rem 2rem;
         }}
         h1, h2, h3, h4 {{
-            color: {primary};
+            color: {primary_color};
         }}
         .stButton > button {{
-            background-color: {primary};
+            background-color: #40739e;
             color: white;
             border-radius: 8px;
             padding: 0.5em 1.5em;
-            transition: all 0.3s ease-in-out;
-        }}
-        .stButton > button:hover {{
-            transform: scale(1.05);
-            background-color: {text};
-            color: {background};
         }}
         .stSidebar {{
-            background-color: {secondary};
+            background-color: #ecf0f1;
         }}
         .css-1aumxhk {{
             padding: 2rem;
@@ -60,23 +51,24 @@ st.markdown(f"""
 
 st.title("📊 Symbolic Systemic Risk Analyzer")
 
-with st.sidebar.expander("📘 Help: What do these values mean?", expanded=False):
-    st.markdown("""
-    - **Capital**: Equity or capital buffer of the institution.
-    - **Liquidity**: Easily accessible cash or liquid assets.
-    - **Total Assets**: The full balance sheet size.
-    - **Short-Term Obligations**: Debts due in the near term.
-    - **Exposure Cap**: Limit to how much risk an institution can absorb from others.
-    """)
-
 st.sidebar.header("⚙️ Network Configuration")
 data = sample_network()
+
+# Help button
+with st.sidebar.expander("❓ What do these settings mean?"):
+    st.markdown("""
+    - **Capital**: Total equity available to absorb losses.
+    - **Liquidity**: Cash or near-cash assets for short-term obligations.
+    - **Assets**: Total assets (including investments and loans).
+    - **Short-Term Obligations**: Liabilities due soon.
+    - **Exposure Cap**: Maximum acceptable exposure to another institution.
+    """)
 
 # Editable node parameters
 st.sidebar.subheader("🧮 Edit Node Parameters")
 node_config = {}
 for node in data['nodes']:
-    with st.sidebar.expander(f"🏦 Node {node['id']}", expanded=False):
+    with st.sidebar.expander(f"🏦 Node {node['id']}"):
         capital = st.number_input(f"Capital of {node['id']}", min_value=0.0, value=10.0, key=f"capital_{node['id']}")
         liquidity = st.number_input(f"Liquidity of {node['id']}", min_value=0.0, value=5.0, key=f"liquidity_{node['id']}")
         assets = st.number_input(f"Assets of {node['id']}", min_value=0.0, value=50.0, key=f"assets_{node['id']}")
@@ -96,19 +88,17 @@ st.graphviz_chart(render_graph(data))
 
 # Run the symbolic model
 st.subheader("🧠 Risk Evaluation Engine")
-report = build_risk_model(data, node_config)
+report, systemic_failure = build_risk_model(data, node_config)
 
-# Display results with animation-like messaging
+# Display results
 st.markdown("### 🔍 Model Output")
-collapse_detected = any("FAILURE" in line.upper() for line in report)
 for line in report:
-    if "FAIL" in line.upper():
-        st.error(f"💥 {line} — system stress cascading!")
-    else:
-        st.code(line, language="text")
+    st.code(line, language='text')
 
-if collapse_detected:
-    st.warning("🚨 Multiple institutions failed — potential domino effect!")
+if systemic_failure:
+    st.error("⚠️ Systemic cascade detected! Institutions failing across the network.")
     st.balloons()
 else:
-    st.success("✅ No catastrophic failures detected in this configuration.")
+    st.success("✅ No cascading failures detected under current configuration.")
+
+st.info("📌 Edit node-level parameters using the sidebar to evaluate different stress scenarios.")
