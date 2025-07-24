@@ -36,6 +36,9 @@ def build_risk_model(graph_data, node_config):
         }
 
     # Handle interbank exposures
+    print("[DEBUG] Edges format:", edges)
+    print("[DEBUG] First edge type:", type(edges[0]))
+
     for edge in edges:
         src = edge['source']
         tgt = edge['target']
