@@ -9,3 +9,4 @@ def sample_network():
         {"source": "D", "target": "A", "weight": 1.0}
     ]
     return {"nodes": nodes, "edges": edges}
+
