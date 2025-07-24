@@ -1,6 +1,6 @@
 from z3 import *
 
-def build_risk_model(graph_data):
+def build_risk_model(graph_data, node_config):
     report = []
     solver = Solver()
 
