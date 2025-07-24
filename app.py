@@ -88,7 +88,7 @@ st.graphviz_chart(render_graph(data))
 
 # Run the symbolic model
 st.subheader("🧠 Risk Evaluation Engine")
-report, systemic_failure = build_risk_model(graph_data, node_config)
+report, systemic_failure = build_risk_model(data, node_config)
 
 # Display results
 st.markdown("### 🔍 Model Output")
